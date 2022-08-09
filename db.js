@@ -12,9 +12,74 @@ const User = conn.define('user', {
   }
 });
 
+const Order = conn.define('order', {
+  isCart:{
+    type: Sequelize.BOOLEAN,
+    defaultValue: true
+  }
+})
+
+const LineItem = conn.define('lineItem', {
+  quantity:{
+    type: Sequelize.INTEGER,
+    defaultValue: 1
+  }
+})
+
+const Product = conn.define('product', {
+  name:{
+    type: Sequelize.STRING
+  }
+})
+
+User.hasMany(Order);
+Order.hasMany(LineItem);
+Product.hasMany(LineItem);
+
 User.addHook('beforeSave', async(user)=> {
   user.password = await bcrypt.hash(user.password, 5);
 });
+
+//Instance method
+User.prototype.addToCart = async function({product, quantity}){
+  const cart = await this.getCart();
+  let lineItem = await LineItem.findOne({
+    where:{
+      productId: product.id,
+      orderId: cart.id
+    }
+  })
+
+  if(lineItem){
+    lineItem.quantity +=quantity;
+    await lineItem.save();
+  }else{
+    await LineItem.create({productId: product.id, quantity, orderId: cart.id})
+  }
+  return this.getCart();
+}
+
+//Instance method
+User.prototype.getCart = async function(){
+  let order = await Order.findOne({
+    where:{
+      userId: this.id,
+      isCart: true
+    },
+    include: [
+      LineItem
+    ]
+  })
+  if(!order){
+    order = await Order.create({userId: this.id});
+    order = await Order.findByPk(order.id, {
+      include: [
+        LineItem
+      ]
+    })
+  }
+  return order;
+}
 
 User.authenticate = async function(credentials){
   const user = await this.findOne({
@@ -52,5 +117,6 @@ User.findByToken = async function findByToken(token){
 
 module.exports = {
   conn,
-  User
+  User,
+  Product
 };
