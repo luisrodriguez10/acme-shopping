@@ -67,6 +67,35 @@ describe("Shopping", () => {
       );
       expect(lineItem).to.be.ok;
       expect(lineItem.quantity).to.equal(3);
+      response = await app
+        .put("/api/orders/cart")
+        .set("authorization", token)
+        .send({ product: foo, quantity: 1 });
+      expect(response.status).to.equal(200);
+      lineItem = response.body.lineItems.find(
+        (lineItem) => lineItem.productId === foo.id
+      );
+      expect(lineItem).to.be.ok;
+      expect(lineItem.quantity).to.equal(2);
+      response = await app
+        .put("/api/orders/cart")
+        .set("authorization", token)
+        .send({ product: foo, quantity: 1 });
+      expect(response.status).to.equal(200);
+      lineItem = response.body.lineItems.find(
+        (lineItem) => lineItem.productId === foo.id
+      );
+      expect(lineItem).to.be.ok;
+      expect(lineItem.quantity).to.equal(1);
+      response = await app
+        .put("/api/orders/cart")
+        .set("authorization", token)
+        .send({ product: foo, quantity: 1 });
+      expect(response.status).to.equal(200);
+      lineItem = response.body.lineItems.find(
+        (lineItem) => lineItem.productId === foo.id
+      );
+      expect(lineItem).to.be.not.ok;
     });
   });
 });
