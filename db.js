@@ -1,46 +1,62 @@
-const Sequelize = require('sequelize');
-const conn = new Sequelize(process.env.DATABASE_URL || 'postgres://localhost/acme_db');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
+const Sequelize = require("sequelize");
+const config = {};
+if(process.env.QUITE){
+  config.logging = false;
+}
+const conn = new Sequelize(
+  process.env.DATABASE_URL || "postgres://localhost/acme_db", config
+);
+const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
 
-const User = conn.define('user', {
+const User = conn.define("user", {
   username: {
-    type: Sequelize.STRING
+    type: Sequelize.STRING,
   },
   password: {
-    type: Sequelize.STRING
-  }
+    type: Sequelize.STRING,
+  },
 });
 
-const Order = conn.define('order', {
-  isCart:{
+const Order = conn.define("order", {
+  isCart: {
     type: Sequelize.BOOLEAN,
-    defaultValue: true
-  }
-})
+    defaultValue: true,
+  },
+});
 
-const LineItem = conn.define('lineItem', {
-  quantity:{
+const LineItem = conn.define("lineItem", {
+  quantity: {
     type: Sequelize.INTEGER,
-    defaultValue: 1
-  }
-})
+    defaultValue: 1,
+    validate:{
+      min: 1
+    }
+  },
+});
 
-const Product = conn.define('product', {
-  name:{
-    type: Sequelize.STRING
-  }
-})
+const Product = conn.define("product", {
+  name: {
+    type: Sequelize.STRING,
+  },
+});
 
 User.hasMany(Order);
 Order.hasMany(LineItem);
 Product.hasMany(LineItem);
 
-User.addHook('beforeSave', async(user)=> {
+User.addHook("beforeSave", async (user) => {
   user.password = await bcrypt.hash(user.password, 5);
 });
 
 //instance method
+User.prototype.createOrderFromCart = async function(){
+  const cart = await this.getCart();
+  cart.isCart = false;
+  return cart.save();
+}
+
+
 // User.prototype.removeFromCart = async function({product, quantity}){
 //   const cart = await this.getCart();
 //   let lineItem = await LineItem.findOne({
@@ -59,82 +75,83 @@ User.addHook('beforeSave', async(user)=> {
 // }
 
 //Instance method
-User.prototype.addToCart = async function({product, quantity}){
+User.prototype.addToCart = async function ({ product, quantity }) {
   const cart = await this.getCart();
   let lineItem = await LineItem.findOne({
-    where:{
+    where: {
       productId: product.id,
-      orderId: cart.id
-    }
-  })
+      orderId: cart.id,
+    },
+  });
 
-  if(lineItem){
-    lineItem.quantity +=quantity;
-    await lineItem.save();
-  }else{
-    await LineItem.create({productId: product.id, quantity, orderId: cart.id})
+  if (lineItem) {
+    lineItem.quantity = quantity;
+    if(lineItem.quantity){
+      await lineItem.save();
+    }else{
+      await lineItem.destroy();
+    }
+    
+  } else {
+    await LineItem.create({
+      productId: product.id,
+      quantity,
+      orderId: cart.id,
+    });
   }
   return this.getCart();
-}
+};
 
 //Instance method
-User.prototype.getCart = async function(){
+User.prototype.getCart = async function () {
   let order = await Order.findOne({
-    where:{
+    where: {
       userId: this.id,
-      isCart: true
+      isCart: true,
     },
-    include: [
-      LineItem
-    ]
-  })
-  if(!order){
-    order = await Order.create({userId: this.id});
+    include: [LineItem],
+  });
+  if (!order) {
+    order = await Order.create({ userId: this.id });
     order = await Order.findByPk(order.id, {
-      include: [
-        LineItem
-      ]
-    })
+      include: [LineItem],
+    });
   }
   return order;
-}
+};
 
-User.authenticate = async function(credentials){
+User.authenticate = async function (credentials) {
   const user = await this.findOne({
     where: {
-      username: credentials.username
-    } 
+      username: credentials.username,
+    },
   });
-  if(user && await bcrypt.compare(credentials.password, user.password)){
-    return jwt.sign({ id: user.id}, process.env.JWT);
-  }
-  else {
-    const error = new Error('Bad Credentials');
+  if (user && (await bcrypt.compare(credentials.password, user.password))) {
+    return jwt.sign({ id: user.id }, process.env.JWT);
+  } else {
+    const error = new Error("Bad Credentials");
     error.status = 401;
     throw error;
   }
-}
+};
 
-User.findByToken = async function findByToken(token){
+User.findByToken = async function findByToken(token) {
   try {
     const id = jwt.verify(token, process.env.JWT).id;
     const user = await User.findByPk(id);
-    if(!user){
-      throw 'error';
+    if (!user) {
+      throw "error";
     }
     return user;
-  }
-  catch(ex){
-    const error = new Error('bad token');
+  } catch (ex) {
+    const error = new Error("bad token");
     error.status = 401;
     throw error;
   }
-
-}
-
+};
 
 module.exports = {
   conn,
   User,
-  Product
+  Product,
 };
