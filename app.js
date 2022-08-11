@@ -40,14 +40,6 @@ app.post('/api/orders', isLoggedIn, async(req, res, next) =>{
   }
 });
 
-// app.put('/api/orders/cart', isLoggedIn, async(req, res, next) =>{
-//   try {
-//     res.send(await req.user.removeFromCart(req.body));
-//   } catch (ex) {
-//     next(ex);
-//   }
-// });
-
 app.post('/api/sessions', async(req, res, next)=> {
   try {
     const credentials = {
