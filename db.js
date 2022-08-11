@@ -41,22 +41,22 @@ User.addHook('beforeSave', async(user)=> {
 });
 
 //instance method
-User.prototype.removeFromCart = async function({product, quantity}){
-  const cart = await this.getCart();
-  let lineItem = await LineItem.findOne({
-    where:{
-      productId: product.id,
-      orderId: cart.id
-    }
-  })
-  if(lineItem && lineItem.quantity > 1){
-    lineItem.quantity -= quantity;
-    await lineItem.save();
-  }else if(lineItem && lineItem.quantity === 1){
-    await lineItem.destroy();
-  }
-  return this.getCart();
-}
+// User.prototype.removeFromCart = async function({product, quantity}){
+//   const cart = await this.getCart();
+//   let lineItem = await LineItem.findOne({
+//     where:{
+//       productId: product.id,
+//       orderId: cart.id
+//     }
+//   })
+//   if(lineItem && lineItem.quantity > 1){
+//     lineItem.quantity -= quantity;
+//     await lineItem.save();
+//   }else if(lineItem && lineItem.quantity === 1){
+//     await lineItem.destroy();
+//   }
+//   return this.getCart();
+// }
 
 //Instance method
 User.prototype.addToCart = async function({product, quantity}){
