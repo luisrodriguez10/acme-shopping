@@ -4,6 +4,8 @@ app.use(express.json());
 const { User } = require('./db');
 const path = require('path');
 
+app.use('/dist', express.static('dist'));
+
 //Middleware function
 const isLoggedIn = async(req, res, next) =>{
   try {
@@ -61,7 +63,7 @@ app.get('/api/sessions', isLoggedIn, async(req, res, next)=> {
 
 app.use((err, req, res, next) => {
   console.log(err)
-  res.status(500).send({error: err});
+  res.status(err.status || 500).send({error: err});
 });
 
 module.exports = app;
